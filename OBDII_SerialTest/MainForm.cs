@@ -197,13 +197,6 @@ namespace OBDII_SerialTest
             serialELM.Write("\r");
         }
 
- 
-
-        private void scanRpmCB_CheckedChanged(object sender, EventArgs e)
-        {
-            elmTimer.Enabled = scanRpmCB.Checked;
-        }
-
         #endregion
 
         #region - Set Up Connection -
@@ -215,7 +208,7 @@ namespace OBDII_SerialTest
                 checkSerialLine.Enabled = false;
                 serialELM.Close();
                 setStatusLBL(2);
-                addRxTxMessage("------------------\r\nConnection Closed.", Color.Yellow);
+                addRxTxMessage("------------------Connection Closed.", Color.Yellow);
             }
             else
                 addRxTxMessage("ERROR: Port not open.", Color.Silver);
@@ -291,18 +284,19 @@ namespace OBDII_SerialTest
 
         public void setRPMGauge(float rpmVal)
         {
-            if (rpmTB.InvokeRequired)
+            if (aGauge1.InvokeRequired)
             {
-                rpmTB.Invoke(new EventHandler(
+                aGauge1.Invoke(new EventHandler(
                     delegate
                     {
-                        rpmTB.Text = rpmVal.ToString("0") + " RPM";
+                        aGauge1.Value = rpmVal;
                     }));
             }
             else
             {
-                rpmTB.Text = rpmVal.ToString("0") + " RPM";
+                aGauge1.Value = rpmVal;
             }
+            aGauge1.Value = rpmVal;
         }
 
         public void addRxTxMessage(string message)
@@ -642,30 +636,30 @@ namespace OBDII_SerialTest
         private void saveLog()
 		{
 
-            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
+            System.Reflection.Assembly a = System.Reflection.Assembly.GetEntryAssembly();
+            string baseDir = System.IO.Path.GetDirectoryName(a.Location);
+
+
+            string logFile = baseDir + "\\logfile.txt";
+            try
             {
+                FileStream fs_exists = new FileStream(logFile, FileMode.OpenOrCreate, FileAccess.Write);
+                fs_exists.Close();
 
+                FileStream fs = new FileStream(logFile, FileMode.Append, FileAccess.Write);
+                StreamWriter s = new StreamWriter(fs);
 
-                string logFile = saveFileDialog1.FileName;
-                try
-                {
-                    FileStream fs_exists = new FileStream(logFile, FileMode.OpenOrCreate, FileAccess.Write);
-                    fs_exists.Close();
+                s.Write(rxtxTB.Text);
 
-                    FileStream fs = new FileStream(logFile, FileMode.Append, FileAccess.Write);
-                    StreamWriter s = new StreamWriter(fs);
-
-                    s.Write(rxtxTB.Text);
-
-                    s.Close();
-                    fs.Close();
-                }
-
-                catch (Exception err)
-                {
-                    throw new System.Exception(err.ToString());
-                }
+                s.Close();
+                fs.Close();
             }
+
+            catch (Exception err)
+            {
+                throw new System.Exception(err.ToString());
+            }
+
         }
 
         private void checkPIDs(string response, int offset)
@@ -689,7 +683,37 @@ namespace OBDII_SerialTest
             }
         }
 
+        private void testPIDClassBTN_Click(object sender, EventArgs e)
+        {
+            
+            ObdPid op = new ObdPid();
 
+            op.Mode = "01";
+            op.PID = "0C";
+            op.Description = "Engine RPM";
+            op.Formula = "(256 * A + B) / 4";
+            op.Response = "10 20";
+
+            addRxTxMessage(op.Val);
+
+            List<ObdPid> obdlist = new List<ObdPid>();
+            obdlist.Add(op);
+
+            
+            int opindex = obdlist.FindIndex(obdpid => obdpid.Mode.Equals("01") && obdpid.PID.Equals("0C"));
+
+            ObdPid opfound = obdlist.Find(delegate(ObdPid found) { return found.PID == "0C"; });
+            addRxTxMessage("" + opfound.Description + " " + opindex.ToString());
+            
+
+            OBDSpecialPID test = new OBDSpecialPID();
+            test.pid0101("81076504");
+        }
+
+        private void scanRpmCB_CheckedChanged(object sender, EventArgs e)
+        {
+            elmTimer.Enabled = scanRpmCB.Checked;
+        }
 
 
 
@@ -745,10 +769,112 @@ namespace OBDII_SerialTest
         
     }
 
+    public class ObdPid
+    {
+        /// <summary>
+        /// Gets or Sets PID Mode
+        /// </summary>
+        private string mode;
+        public string Mode
+        {
+            get { return mode; }
+            set { mode = value; }
+        }
+
+        /// <summary>
+        /// Gets or Sets PID Code
+        /// </summary>
+        private string pid;
+        public string PID
+        {
+            get { return pid; }
+            set { pid = value; }
+        }
+
+        /// <summary>
+        /// Gets or Sets PID Response from OBD-II
+        /// </summary>
+        private string response;
+        public string Response
+        {
+            get { return response; }
+            set { response = value; calcValue(); }
+        }
 
 
+        /// <summary>
+        /// Gets Calculated PID Value
+        /// </summary>
+        private string pidVal;
+        public string Val
+        {
+            get { return pidVal; }
+        }
+
+        /// <summary>
+        /// Gets or Sets Units
+        /// </summary>
+        private string units;
+        public string Units
+        {
+            get { return units; }
+            set { units = value; }
+        }
+
+
+        /// <summary>
+        /// Gets or Sets PID Description
+        /// </summary>
+        private string description;
+        public string Description
+        {
+            get { return description; }
+            set { description = value; }
+        }
+
+        /// <summary>
+        /// Gets or Sets PID Calculation Formula. A = byte 1, B = byte 2, etc.
+        /// </summary>
+        private string formula;
+        public string Formula
+        {
+            get { return formula; }
+            set { formula = value; calcValue(); }
+        }
+
+        /// <summary>
+        /// Gets or Sets expected response byte length
+        /// </summary>
+        private int responseBytes;
+        public int ResponseBytes
+        {
+            get { return responseBytes; }
+            set { responseBytes = value; }
+        }
+
+
+
+
+        private void calcValue()
+        {
+            if (formula != "" && response != "" && formula != null && response != null)
+            {
+                MathFunctions.MathParser mp = new MathFunctions.MathParser();
+                string calcFormula = formula;
+                for (int bytes = 0; bytes < response.Length / 2; bytes++)
+                {
+                    int byteval = int.Parse(response.Substring(bytes * 2, 2), System.Globalization.NumberStyles.HexNumber);
+                    string replaceChar = ((char)(65 + bytes)).ToString();
+                    calcFormula = Regex.Replace(calcFormula, replaceChar, byteval.ToString());
+                }
+                pidVal = mp.Calculate(calcFormula).ToString();
+            }
+        }
+    }
     public class OBDSpecialPID
     {
+
+        
 
         public struct EngineTest
         {
@@ -844,7 +970,7 @@ namespace OBDII_SerialTest
         /// <returns>Status String</returns>
         public string pid0103(string response)
         {
-            byte responseBytes = byte.Parse(response, System.Globalization.NumberStyles.HexNumber);
+            byte responseBytes =  byte.Parse(response, System.Globalization.NumberStyles.HexNumber);
             string fuelMode = "Open Loop - Warmup";
             switch (responseBytes)
             {
@@ -959,9 +1085,14 @@ namespace OBDII_SerialTest
 
             return troubleCodeList;
         }
-        
     }
 
+  
+    public class BinaryTools
+    {
+
+
+    }
 
     #endregion
 }
