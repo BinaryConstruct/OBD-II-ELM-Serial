@@ -1,10 +1,19 @@
 # Terraria Map Editor
 # Author: BinaryConstruct
-# License: GPL - http://www.gnu.org/licenses/gpl.html
+# License: MS-PL
 # GIT: http://github.com/BinaryConstruct/OBD-II-ELM-Serial
 # Homepage: http://www.binaryconstruct.com/obd-ii
 
 #Description
 Using a board based around the ELM327 I designed this simple software interface (c#) to communicate with my vehicles onboard OBD-II connection. The ultimate goal of this is to build a gauge display on an LCD driven by an ARM microprocessor. Currently the project is in its initial phase where I am working on decyphering the PIDs and their responses. 
 
-Feel free to modify, reuse, redistribute etc (See GNU GPL 3). 
+Copyright (c) 2011 BinaryConstruct
+ 
+This source is subject to the Microsoft Public License.
+See http://www.microsoft.com/opensource/licenses.mspx#Ms-PL.
+All other rights reserved.
+
+THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, 
+EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED 
+WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
+ 
